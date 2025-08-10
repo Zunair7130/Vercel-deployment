@@ -27,21 +27,80 @@ document.querySelector("form").addEventListener("submit", async (e) => {
   chatBox.appendChild(botWrapper);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // Send to backend
+  // Send to backend with better error handling
   try {
+    console.log('🚀 Sending request to /api/ask...');
+    
     const res = await fetch("/api/ask", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ message })
-});
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ message })
+    });
 
+    console.log('📥 Response status:', res.status);
+    console.log('📥 Response ok:', res.ok);
 
     const data = await res.json();
-    botMsg.textContent = data.reply?.trim() || "✅ Got response but it's empty.";
-  } catch (err) {
-    botMsg.textContent = "❌ Failed to get response.";
-    console.error(err);
-  }
+    console.log('📄 Response data:', data);
 
-  input.value = "";
+    if (!res.ok) {
+      // Display detailed error info
+      console.error('❌ API Error:', data);
+      botMsg.textContent = `❌ Error ${res.status}: ${data.error || 'Unknown error'}`;
+      
+      // Log additional debug info if available
+      if (data.debug) {
+        console.error('Debug info:', data.debug);
+      }
+      if (data.details) {
+        console.error('Error details:', data.details);
+      }
+      return;
+    }
+
+    // Success case
+    if (data.reply) {
+      botMsg.textContent = data.reply.trim();
+    } else {
+      botMsg.textContent = "✅ Got response but it's empty.";
+      console.warn('Empty reply in response:', data);
+    }
+    
+  } catch (err) {
+    console.error('❌ Network/Parse error:', err);
+    botMsg.textContent = `❌ Network error: ${err.message}`;
+  }
 });
+
+// Add test function for debugging
+window.testAPI = async function() {
+  console.log('🧪 Testing /api/ask endpoint...');
+  
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ message: "Hello test" })
+    });
+    
+    console.log('Test response status:', res.status);
+    console.log('Test response ok:', res.ok);
+    
+    const data = await res.json();
+    console.log('Test response data:', data);
+    
+    return data;
+    
+  } catch (err) {
+    console.error('Test failed:', err);
+    return { error: err.message };
+  }
+};
+
+console.log('💡 Use testAPI() in console to debug the API endpoint');
